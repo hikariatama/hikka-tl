@@ -4,7 +4,7 @@ import os
 import sys
 import time
 
-from telethon import TelegramClient, events, utils
+from hikkatl import TelegramClient, events, utils
 
 
 def get_env(name, message, cast=str):

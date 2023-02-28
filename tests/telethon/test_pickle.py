@@ -1,6 +1,6 @@
 import pickle
 
-from telethon.errors import RPCError, BadRequestError, FileIdInvalidError, NetworkMigrateError
+from hikkatl.errors import RPCError, BadRequestError, FileIdInvalidError, NetworkMigrateError
 
 
 def _assert_equality(error, unpickled_error):

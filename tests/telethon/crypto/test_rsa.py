@@ -3,7 +3,7 @@ Tests for `telethon.crypto.rsa`.
 """
 import pytest
 
-from telethon.crypto import rsa
+from hikkatl.crypto import rsa
 
 
 @pytest.fixture

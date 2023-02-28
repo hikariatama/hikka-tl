@@ -6,8 +6,8 @@ from base64 import b64decode
 
 import pytest
 
-from telethon import helpers
-from telethon.utils import get_inner_text
+from hikkatl import helpers
+from hikkatl.utils import get_inner_text
 from telethon.tl.types import MessageEntityUnknown as Meu
 
 

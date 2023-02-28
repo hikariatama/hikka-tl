@@ -3,7 +3,7 @@ import pathlib
 
 import pytest
 
-from telethon import utils
+from hikkatl import utils
 from telethon.tl.types import (
     MessageMediaGame, Game, PhotoEmpty
 )

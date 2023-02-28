@@ -1,7 +1,7 @@
 """
 Tests for `telethon.extensions.html`.
 """
-from telethon.extensions import html
+from hikkatl.extensions import html
 from telethon.tl.types import MessageEntityBold, MessageEntityItalic, MessageEntityTextUrl
 
 

@@ -1,7 +1,7 @@
 """
 Tests for `telethon.extensions.markdown`.
 """
-from telethon.extensions import markdown
+from hikkatl.extensions import markdown
 from telethon.tl.types import MessageEntityBold, MessageEntityItalic, MessageEntityTextUrl
 
 

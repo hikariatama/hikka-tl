@@ -3,8 +3,8 @@ import os
 
 from quart import Quart, render_template_string, request
 
-from telethon import TelegramClient, utils
-from telethon.errors import SessionPasswordNeededError
+from hikkatl import TelegramClient, utils
+from hikkatl.errors import SessionPasswordNeededError
 
 
 def get_env(name, message):
