@@ -1554,3 +1554,30 @@ def _photo_size_byte_count(size):
         return max(size.sizes)
     else:
         return None
+
+def convert_reaction(
+    reaction: "typing.Optional[hints.Reaction]" = None,  # type: ignore
+) -> "typing.Optional[typing.Union[typing.List[types.ReactionEmoji], typing.List[types.ReactionCustomEmoji]]]":  # type: ignore
+    """
+    Converts a reaction to a list of :tl:`ReactionEmoji` or :tl:`ReactionCustomEmoji`.
+    """
+    if not reaction:
+        return None
+
+    if isinstance(reaction, str):
+        reaction = types.ReactionEmoji(reaction)
+
+    if isinstance(reaction, int):
+        reaction = types.ReactionCustomEmoji(reaction)
+
+    if isinstance(reaction, (types.ReactionEmoji, types.ReactionCustomEmoji)):
+        reaction = [reaction]
+
+    for r in reaction:
+        if isinstance(r, str):
+            reaction[reaction.index(r)] = types.ReactionEmoji(r)
+
+        if isinstance(r, int):
+            reaction[reaction.index(r)] = types.ReactionCustomEmoji(r)
+
+    return reaction

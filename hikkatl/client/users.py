@@ -132,6 +132,57 @@ class UserMethods:
 
     # region Public methods
 
+    async def reorder_usernames(
+        self: "TelegramClient",
+        order: typing.List[str],
+    ) -> bool:
+        """
+        Reorders the usernames of user account
+        Args:
+            order (List[str]): List of usernames in the order you want them to be
+        Returns:
+            bool: True if successful
+        Example:
+            .. code-block:: python
+                client.reorder_usernames(['username1', 'username2'])
+        """
+        return await self(functions.account.ReorderUsernamesRequest(order=order))
+
+    async def toggle_username(
+        self: "TelegramClient",
+        username: str,
+        active: bool,
+    ) -> bool:
+        """
+        Toggles the given username's active status.
+        Args:
+            username (``str``):
+                The username to toggle.
+            active (``bool``):
+                Whether the username should be active or not.
+        Returns:
+            ``bool``: Whether the operation was successful.
+        Example:
+            .. code-block:: python
+                await client.toggle_username('username', False)
+        """
+        return await self(
+            functions.account.ToggleUsernameRequest(username=username, active=active)
+        )
+
+    async def set_status(
+        self: "TelegramClient",
+        document_id: int,
+        until: typing.Optional[int] = None,
+    ) -> bool:
+        return await self(
+            functions.account.UpdateEmojiStatusRequest(
+                types.EmojiStatusUntil(document_id, until)
+                if until
+                else types.EmojiStatus(document_id)
+            )
+        )
+
     async def get_me(self: 'TelegramClient', input_peer: bool = False) \
             -> 'typing.Union[types.User, types.InputPeerUser]':
         """

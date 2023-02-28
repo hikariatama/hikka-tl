@@ -1,3 +1,5 @@
+This fork is being maintained following the specific needs of [Hikka userbot](https://github.com/hikariatama/Hikka).
+
 Telethon
 ========
 .. epigraph::

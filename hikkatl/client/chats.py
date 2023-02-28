@@ -926,9 +926,10 @@ class ChatMethods:
         """
         entity = await self.get_input_entity(entity)
         user = await self.get_input_entity(user)
-        ty = helpers._entity_type(user)
-        if ty != helpers._EntityType.USER:
-            raise ValueError('You must pass a user entity')
+        # We CAN ban a channel
+        # ty = helpers._entity_type(user)
+        # if ty != helpers._EntityType.USER:
+        #     raise ValueError('You must pass a user entity')
 
         perm_names = (
             'change_info', 'post_messages', 'edit_messages', 'delete_messages',
@@ -1115,9 +1116,10 @@ class ChatMethods:
             ))
 
         user = await self.get_input_entity(user)
-        ty = helpers._entity_type(user)
-        if ty != helpers._EntityType.USER:
-            raise ValueError('You must pass a user entity')
+        # We CAN restrict a channel
+        # ty = helpers._entity_type(user)
+        # if ty != helpers._EntityType.USER:
+        #     raise ValueError('You must pass a user entity')
 
         if isinstance(user, types.InputPeerSelf):
             raise ValueError('You cannot restrict yourself')
@@ -1127,6 +1129,434 @@ class ChatMethods:
             participant=user,
             banned_rights=rights
         ))
+
+    async def reorder_channel_usernames(
+        self: "TelegramClient",
+        entity: "hints.EntityLike",
+        order: typing.List[str],
+    ) -> types.Updates:
+        """
+        Reorders the usernames in the given channel.
+        This method is only available in channels, not in supergroups.
+        Arguments
+            entity (`entity`):
+                The channel where the usernames should be reordered.
+            order (`list`):
+                The list of usernames to reorder. The first username
+                will be the first one in the list, and so on.
+        Returns
+            The resulting :tl:`Updates` object.
+        Example
+            .. code-block:: python
+                # Reorder the usernames in the channel
+                await client.reorder_channel_usernames(channel, [
+                    'cool_channel',
+                    'awesome_channel',
+                    'wow_channel',
+                ])
+        """
+        entity = await self.get_input_entity(entity)
+        ty = helpers._entity_type(entity)
+        if ty != helpers._EntityType.CHANNEL:
+            raise ValueError("You must pass either a channel or a supergroup")
+
+        return await self(
+            functions.channels.ReorderUsernamesRequest(
+                channel=entity,
+                order=order,
+            )
+        )
+
+    async def toggle_channel_username(
+        self: "TelegramClient",
+        entity: "hints.EntityLike",
+        username: str,
+        active: bool,
+    ) -> types.Updates:
+        """
+        Toggles the username of the given channel.
+        This method is only available in channels, not in supergroups.
+        Arguments
+            entity (`entity`):
+                The channel where the username should be toggled.
+            username (`str`):
+                The username to toggle.
+            active (`bool`):
+                Whether the username should be active or not.
+        Returns
+            The resulting :tl:`Updates` object.
+        Example
+            .. code-block:: python
+                # Toggle the username in the channel
+                await client.toggle_channel_username(
+                    channel,
+                    'cool_channel',
+                    False,
+                )
+        """
+        entity = await self.get_input_entity(entity)
+        ty = helpers._entity_type(entity)
+        if ty != helpers._EntityType.CHANNEL:
+            raise ValueError("You must pass either a channel or a supergroup")
+
+        return await self(
+            functions.channels.ToggleUsernameRequest(
+                channel=entity,
+                username=username,
+                active=active,
+            )
+        )
+
+    async def deactivate_all_usernames(
+        self: "TelegramClient",
+        entity: "hints.EntityLike",
+    ) -> types.Updates:
+        """
+        Deactivates all usernames in the given channel.
+        This method is only available in channels, not in supergroups.
+        Arguments
+            entity (`entity`):
+                The channel where the usernames should be deactivated.
+        Returns
+            The resulting :tl:`Updates` object.
+        Example
+            .. code-block:: python
+                # Deactivate all usernames in the channel
+                await client.deactivate_all_usernames(channel)
+        """
+        entity = await self.get_input_entity(entity)
+        ty = helpers._entity_type(entity)
+        if ty != helpers._EntityType.CHANNEL:
+            raise ValueError("You must pass either a channel or a supergroup")
+
+        return await self(
+            functions.channels.DeactivateAllUsernamesRequest(
+                channel=entity,
+            )
+        )
+
+    async def toggle_forum(
+        self: "TelegramClient",
+        entity: "hints.EntityLike",
+        enabled: bool,
+    ) -> types.Updates:
+        """
+        Toggles the forum mode of the given channel.
+        This method is only available in channels, not in supergroups.
+        Arguments
+            entity (`entity`):
+                The channel where the forum mode should be toggled.
+            enabled (`bool`):
+                Whether the forum mode should be enabled or not.
+        Returns
+            The resulting :tl:`Updates` object.
+        Example
+            .. code-block:: python
+                # Toggle the forum mode in the channel
+                await client.toggle_forum(channel, True)
+        """
+        entity = await self.get_input_entity(entity)
+        ty = helpers._entity_type(entity)
+        if ty != helpers._EntityType.CHANNEL:
+            raise ValueError("You must pass either a channel or a supergroup")
+
+        if not isinstance(enabled, bool):
+            raise ValueError("enabled must be a boolean")
+
+        return await self(
+            functions.channels.ToggleForumRequest(
+                channel=entity,
+                enabled=enabled,
+            )
+        )
+
+    async def create_forum_topic(
+        self: "TelegramClient",
+        entity: "hints.EntityLike",
+        title: str,
+        *,
+        icon_color: int = None,
+        icon_emoji_id: int = None,
+        send_as: "hints.EntityLike" = None,
+    ) -> types.Message:
+        """
+        Creates a forum topic in the given channel.
+        This method is only available in channels, not in supergroups.
+        Arguments
+            entity (`entity`):
+                The channel where the forum topic should be created.
+            title (`str`):
+                The title of the forum topic.
+            icon_color (`int`, optional):
+                The color of the icon.
+            icon_emoji_id (`int`, optional):
+                The ID of the emoji.
+            send_as (`entity`, optional):
+                The user who should send the message.
+        Returns
+            The resulting :tl:`Message` object.
+        Example
+            .. code-block:: python
+                # Create a forum topic in the channel
+                await client.create_forum_topic(
+                    channel,
+                    'Awesome topic',
+                    icon_emoji_id=5454182070156794055,
+                )
+        """
+        entity = await self.get_input_entity(entity)
+        ty = helpers._entity_type(entity)
+        if ty != helpers._EntityType.CHANNEL:
+            raise ValueError("You must pass either a channel or a supergroup")
+
+        if not icon_color and not icon_emoji_id:
+            raise ValueError("You must pass either icon_color or icon_emoji_id")
+
+        if send_as is not None:
+            send_as = await self.get_input_entity(send_as)
+
+        return await self(
+            functions.channels.CreateForumTopicRequest(
+                channel=entity,
+                title=title,
+                icon_color=icon_color,
+                icon_emoji_id=icon_emoji_id,
+                send_as=send_as,
+            )
+        )
+
+    async def get_forum_topics(
+        self: "TelegramClient",
+        entity: "hints.EntityLike",
+        *,
+        q: str = None,
+        offset_date: int = None,
+        offset_id: int = 0,
+        offset_topic: int = 0,
+        limit: int = 0,
+    ) -> types.messages.ForumTopics:
+        """
+        Gets the forum topics in the given channel.
+        This method is only available in channels, not in supergroups.
+        Arguments
+            entity (`entity`):
+                The channel where the forum topics should be retrieved.
+            q (`str`, optional):
+                The query to search for.
+            offset_date (`int`, optional):
+                The offset date.
+            offset_id (`int`, optional):
+                The offset ID.
+            offset_topic (`int`, optional):
+                The offset topic.
+            limit (`int`, optional):
+                The maximum number of topics to retrieve.
+        Returns
+            The resulting :tl:`ForumTopics` object.
+        Example
+            .. code-block:: python
+                # Get the forum topics in the channel
+                await client.get_forum_topics(channel)
+        """
+        entity = await self.get_input_entity(entity)
+        ty = helpers._entity_type(entity)
+        if ty != helpers._EntityType.CHANNEL:
+            raise ValueError("You must pass either a channel or a supergroup")
+
+        if not isinstance(offset_id, int):
+            raise ValueError("offset_id must be an integer")
+
+        if not isinstance(offset_topic, int):
+            raise ValueError("offset_topic must be an integer")
+
+        if not isinstance(limit, int):
+            raise ValueError("limit must be an integer")
+
+        return await self(
+            functions.channels.GetForumTopicsRequest(
+                channel=entity,
+                q=q,
+                offset_date=offset_date,
+                offset_id=offset_id,
+                offset_topic=offset_topic,
+                limit=limit,
+            )
+        )
+
+    async def get_forum_topics_by_id(
+        self: "TelegramClient",
+        entity: "hints.EntityLike",
+        topics: typing.List[int],
+    ) -> types.messages.ForumTopics:
+        """
+        Gets the forum topics in the given channel.
+        This method is only available in channels, not in supergroups.
+        Arguments
+            entity (`entity`):
+                The channel where the forum topics should be retrieved.
+            topics (`List[int]`):
+                The topics to retrieve.
+        Returns
+            The resulting :tl:`ForumTopics` object.
+        Example
+            .. code-block:: python
+                # Get the forum topics in the channel
+                await client.get_forum_topics(channel)
+        """
+        entity = await self.get_input_entity(entity)
+        ty = helpers._entity_type(entity)
+        if ty != helpers._EntityType.CHANNEL:
+            raise ValueError("You must pass either a channel or a supergroup")
+
+        if not isinstance(topics, list) or not all(isinstance(x, int) for x in topics):
+            raise ValueError("topics must be a list of integers")
+
+        return await self(
+            functions.channels.GetForumTopicsByIDRequest(
+                channel=entity,
+                topics=topics,
+            )
+        )
+
+    async def edit_forum_topic(
+        self: "TelegramClient",
+        entity: "hints.EntityLike",
+        topic_id: int,
+        *,
+        title: str = None,
+        icon_emoji_id: int = None,
+        closed: bool = None,
+    ) -> types.Updates:
+        """
+        Edits the given forum topic.
+        This method is only available in channels, not in supergroups.
+        Arguments
+            entity (`entity`):
+                The channel where the forum topic should be edited.
+            topic_id (`int`):
+                The ID of the topic to edit.
+            title (`str`, optional):
+                The new title of the topic.
+            icon_emoji_id (`int`, optional):
+                The new emoji ID of the topic.
+            closed (`bool`, optional):
+                Whether the topic should be closed or not.
+        Returns
+            The resulting :tl:`Updates` object.
+        Example
+            .. code-block:: python
+                # Edit the forum topic in the channel
+                await client.edit_forum_topic(
+                    channel,
+                    123,
+                    title='Awesome topic',
+                    icon_emoji_id=5454182070156794055,
+                )
+        """
+        entity = await self.get_input_entity(entity)
+        ty = helpers._entity_type(entity)
+        if ty != helpers._EntityType.CHANNEL:
+            raise ValueError("You must pass either a channel or a supergroup")
+
+        if not title and not icon_emoji_id and closed is None:
+            raise ValueError("You must pass either title, icon_emoji_id or closed")
+
+        if not isinstance(topic_id, int):
+            raise ValueError("topic_id must be an int")
+
+        return await self(
+            functions.channels.EditForumTopicRequest(
+                channel=entity,
+                topic_id=topic_id,
+                title=title,
+                icon_emoji_id=icon_emoji_id,
+                closed=closed,
+            )
+        )
+
+    async def update_pinned_forum_topic(
+        self: "TelegramClient",
+        entity: "hints.EntityLike",
+        topic_id: int,
+        pinned: bool,
+    ) -> types.Updates:
+        """
+        Pins or unpins the given forum topic.
+        This method is only available in channels, not in supergroups.
+        Arguments
+            entity (`entity`):
+                The channel where the forum topic should be pinned.
+            topic_id (`int`):
+                The ID of the topic to pin.
+            pinned (`bool`):
+                Whether the topic should be pinned or not.
+        Returns
+            The resulting :tl:`Updates` object.
+        Example
+            .. code-block:: python
+                # Pin the forum topic in the channel
+                await client.update_pinned_forum_topic(
+                    channel,
+                    123,
+                    True,
+                )
+        """
+        entity = await self.get_input_entity(entity)
+        ty = helpers._entity_type(entity)
+        if ty != helpers._EntityType.CHANNEL:
+            raise ValueError("You must pass either a channel or a supergroup")
+
+        if not isinstance(topic_id, int):
+            raise ValueError("topic_id must be an integer")
+
+        if not isinstance(pinned, bool):
+            raise ValueError("pinned must be a boolean")
+
+        return await self(
+            functions.channels.UpdatePinnedForumTopicRequest(
+                channel=entity,
+                topic_id=topic_id,
+                pinned=pinned,
+            )
+        )
+
+    async def delete_topic_history(
+        self: "TelegramClient",
+        entity: "hints.EntityLike",
+        top_msg_id: int,
+    ) -> types.messages.AffectedHistory:
+        """
+        Deletes the history of the given forum topic.
+        This method is only available in channels, not in supergroups.
+        Arguments
+            entity (`entity`):
+                The channel where the forum topic should be deleted.
+            top_msg_id (`int`):
+                The ID of the topic to delete.
+        Returns
+            The resulting :tl:`AffectedHistory` object.
+        Example
+            .. code-block:: python
+                # Delete the forum topic in the channel
+                await client.delete_topic_history(
+                    channel,
+                    123,
+                )
+        """
+        entity = await self.get_input_entity(entity)
+        ty = helpers._entity_type(entity)
+        if ty != helpers._EntityType.CHANNEL:
+            raise ValueError("You must pass either a channel or a supergroup")
+
+        if not isinstance(top_msg_id, int):
+            raise ValueError("top_msg_id must be an integer")
+
+        return await self(
+            functions.channels.DeleteTopicHistoryRequest(
+                channel=entity,
+                top_msg_id=top_msg_id,
+            )
+        )
 
     async def kick_participant(
             self: 'TelegramClient',
@@ -1166,9 +1596,10 @@ class ChatMethods:
                 await client.kick_participant(chat, 'me')
         """
         entity = await self.get_input_entity(entity)
-        user = await self.get_input_entity(user)
-        if helpers._entity_type(user) != helpers._EntityType.USER:
-            raise ValueError('You must pass a user entity')
+        # We CAN kick a channel
+        # user = await self.get_input_entity(user)
+        # if helpers._entity_type(user) != helpers._EntityType.USER:
+        #     raise ValueError('You must pass a user entity')
 
         ty = helpers._entity_type(entity)
         if ty == helpers._EntityType.CHAT:

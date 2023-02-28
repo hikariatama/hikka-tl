@@ -1,9 +1,10 @@
+import asyncio
 import inspect
 import itertools
 import typing
 import warnings
 
-from .. import helpers, utils, errors, hints
+from .. import helpers, utils, errors, hints, events
 from ..requestiter import RequestIter
 from ..tl import types, functions
 
@@ -626,6 +627,7 @@ class MessageMethods:
             entity: 'hints.EntityLike',
             message: 'hints.MessageLike' = '',
             *,
+            top_msg_id: int = None,
             reply_to: 'typing.Union[int, types.Message]' = None,
             attributes: 'typing.Sequence[types.TypeDocumentAttribute]' = None,
             parse_mode: typing.Optional[str] = (),
@@ -670,6 +672,11 @@ class MessageMethods:
                 characters. Longer messages will not be sliced automatically,
                 and you should slice them manually if the text to send is
                 longer than said length.
+
+            top_msg_id (`int`, optional):
+                The top message ID of the discussion to which the message
+                will be sent. This is only used when sending a message to
+                a forum chat.
 
             reply_to (`int` | `Message <telethon.tl.custom.message.Message>`, optional):
                 Whether to reply to a message or not. If an integer is provided,
@@ -816,6 +823,7 @@ class MessageMethods:
         if file is not None:
             return await self.send_file(
                 entity, file, caption=message, reply_to=reply_to,
+                top_msg_id=top_msg_id,
                 attributes=attributes, parse_mode=parse_mode,
                 force_document=force_document, thumb=thumb,
                 buttons=buttons, clear_draft=clear_draft, silent=silent,
@@ -843,6 +851,7 @@ class MessageMethods:
                     entity,
                     message.media,
                     caption=message.message,
+                    top_msg_id=top_msg_id,
                     silent=silent,
                     background=background,
                     reply_to=reply_to,
@@ -855,6 +864,7 @@ class MessageMethods:
             request = functions.messages.SendMessageRequest(
                 peer=entity,
                 message=message.message or '',
+                top_msg_id=top_msg_id,
                 silent=silent,
                 background=background,
                 reply_to_msg_id=utils.get_message_id(reply_to),
@@ -916,7 +926,8 @@ class MessageMethods:
             with_my_score: bool = None,
             silent: bool = None,
             as_album: bool = None,
-            schedule: 'hints.DateLike' = None
+            schedule: 'hints.DateLike' = None,
+            top_msg_id: int = None
     ) -> 'typing.Sequence[types.Message]':
         """
         Forwards the given messages to the specified entity.
@@ -959,6 +970,11 @@ class MessageMethods:
                 If set, the message(s) won't forward immediately, and
                 instead they will be scheduled to be automatically sent
                 at a later time.
+            
+            top_msg_id (`int`, optional):
+                The top message ID of the thread to which the message(s)
+                will be forwarded. Only applicable when forwarding to a
+                forum chat.
 
         Returns
             The list of forwarded `Message <telethon.tl.custom.message.Message>`,
@@ -1028,7 +1044,8 @@ class MessageMethods:
                 silent=silent,
                 background=background,
                 with_my_score=with_my_score,
-                schedule_date=schedule
+                schedule_date=schedule,
+                top_msg_id=top_msg_id
             )
             result = await self(req)
             sent.extend(self._get_response_message(req, result, entity))
@@ -1297,7 +1314,8 @@ class MessageMethods:
             *,
             max_id: int = None,
             clear_mentions: bool = False,
-            clear_reactions: bool = False) -> bool:
+            clear_reactions: bool = False,
+            top_msg_id: int = None) -> bool:
         """
         Marks messages as read and optionally clears mentions.
 
@@ -1338,6 +1356,11 @@ class MessageMethods:
                 If no message is provided, this will be the only action
                 taken.
 
+            top_msg_id (`int`, optional):
+                The top message ID of the discussion in which the mentions
+                are being cleared. This is required for topics of forum
+                chats.
+
         Example
             .. code-block:: python
 
@@ -1359,11 +1382,11 @@ class MessageMethods:
 
         entity = await self.get_input_entity(entity)
         if clear_mentions:
-            await self(functions.messages.ReadMentionsRequest(entity))
+            await self(functions.messages.ReadMentionsRequest(entity, top_msg_id))
             if max_id is None and not clear_reactions:
                 return True
         if clear_reactions:
-            await self(functions.messages.ReadReactionsRequest(entity))
+            await self(functions.messages.ReadReactionsRequest(entity, top_msg_id))
             if max_id is None:
                 return True
 
@@ -1473,6 +1496,112 @@ class MessageMethods:
 
         # Pinning a message that doesn't exist would RPC-error earlier
         return self._get_response_message(request, result, entity)
+
+    async def report_reaction(
+        self: "TelegramClient",
+        peer: "hints.EntityLike",
+        id: int,
+        reaction_peer: "hints.EntityLike",
+    ) -> bool:
+        return await self(
+            functions.messages.ReportReactionRequest(peer, id, reaction_peer)
+        )
+
+    async def send_reaction(
+        self: "TelegramClient",
+        entity: "hints.DialogLike",
+        message: "hints.MessageIDLike",
+        reaction: "typing.Optional[hints.Reaction]" = None,
+        big: bool = False,
+        add_to_recent: bool = False,
+    ):
+        reaction = utils.convert_reaction(reaction)
+        message = utils.get_message_id(message) or 0
+        if not reaction:
+            get_default_request = functions.help.GetAppConfigRequest()
+            app_config = await self(get_default_request)
+            reaction = (
+                next((y for y in app_config.value if "reactions_default" in y.key))
+            ).value.value
+
+        request = functions.messages.SendReactionRequest(
+            big=big,
+            peer=entity,
+            msg_id=message,
+            reaction=reaction,
+            add_to_recent=add_to_recent,
+        )
+        result = await self(request)
+        for update in result.updates:
+            if isinstance(update, types.UpdateMessageReactions):
+                return update.reactions
+            if isinstance(update, types.UpdateEditMessage):
+                return update.message.reactions
+
+    async def set_quick_reaction(self: "TelegramClient", reaction: "hints.Reaction"):
+        request = functions.messages.SetDefaultReactionRequest(
+            reaction=utils.convert_reaction(reaction)
+        )
+        return await self(request)
+
+    async def transcribe(
+        self: "TelegramClient",
+        peer: "hints.EntityLike",
+        message: "hints.MessageIDLike",
+        timeout: int = 15,
+    ) -> typing.Optional[str]:
+        result = await self(
+            functions.messages.TranscribeAudioRequest(
+                peer,
+                utils.get_message_id(message),
+            )
+        )
+
+        transcription_result = None
+
+        event = asyncio.Event()
+
+        @self.on(events.Raw(types.UpdateTranscribedAudio))
+        async def handler(update):
+            nonlocal result, transcription_result
+            if update.transcription_id != result.transcription_id or update.pending:
+                return
+
+            transcription_result = update.text
+            event.set()
+            raise events.StopPropagation
+
+        try:
+            await asyncio.wait_for(event.wait(), timeout=timeout)
+        except Exception:
+            return None
+
+        return transcription_result
+
+    async def translate(
+        self: "TelegramClient",
+        peer: "hints.EntityLike",
+        message: "hints.MessageIDLike",
+        to_lang: str,
+        from_lang: typing.Optional[str] = None,
+    ) -> str:
+        msg_id = utils.get_message_id(message) or 0
+        if not msg_id:
+            return None
+
+        if not isinstance(message, types.Message):
+            message = (await self.get_messages(peer, ids=[msg_id]))[0]
+
+        result = await self(
+            functions.messages.TranslateTextRequest(
+                peer=peer,
+                msg_id=msg_id,
+                text=message.raw_text,
+                to_lang=to_lang,
+                from_lang=from_lang,
+            )
+        )
+        return getattr(result, "text", None) or ""
 
     # endregion
 

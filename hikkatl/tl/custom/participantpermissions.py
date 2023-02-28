@@ -136,3 +136,7 @@ class ParticipantPermissions:
     manage_call = property(**_admin_prop('manage_call', """
         Whether the user will be able to manage group calls.
     """))
+
+    manage_topics = property(**_admin_prop('manage_topics',"""
+        Whether the user will be able to manage topics.
+    """))

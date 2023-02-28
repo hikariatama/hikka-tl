@@ -116,6 +116,7 @@ class UploadMethods:
             supports_streaming: bool = False,
             schedule: 'hints.DateLike' = None,
             comment_to: 'typing.Union[int, types.Message]' = None,
+            top_msg_id: int = None,
             ttl: int = None,
             **kwargs) -> 'types.Message':
         """
@@ -273,6 +274,11 @@ class UploadMethods:
 
                 This parameter takes precedence over ``reply_to``. If there is
                 no linked chat, `telethon.errors.sgIdInvalidError` is raised.
+            
+            top_msg_id (`int`, optional):
+                The top message ID of the discussion to which the message
+                will be sent. This is only used when sending a message to
+                a forum chat.
 
             ttl (`int`. optional):
                 The Time-To-Live of the file (also known as "self-destruct timer"
@@ -362,6 +368,7 @@ class UploadMethods:
                 result += await self._send_album(
                     entity, file[:10], caption=captions[:10],
                     progress_callback=progress_callback, reply_to=reply_to,
+                    top_msg_id=top_msg_id,
                     parse_mode=parse_mode, silent=silent, schedule=schedule,
                     supports_streaming=supports_streaming, clear_draft=clear_draft,
                     force_document=force_document, background=background,
@@ -374,6 +381,7 @@ class UploadMethods:
                     entity, doc, allow_cache=allow_cache,
                     caption=cap, force_document=force_document,
                     progress_callback=progress_callback, reply_to=reply_to,
+                    top_msg_id=top_msg_id,
                     attributes=attributes, thumb=thumb, voice_note=voice_note,
                     video_note=video_note, buttons=buttons, silent=silent,
                     supports_streaming=supports_streaming, schedule=schedule,
@@ -405,6 +413,7 @@ class UploadMethods:
         markup = self.build_reply_markup(buttons)
         request = functions.messages.SendMediaRequest(
             entity, media, reply_to_msg_id=reply_to, message=caption,
+            top_msg_id=top_msg_id,
             entities=msg_entities, reply_markup=markup, silent=silent,
             schedule_date=schedule, clear_draft=clear_draft,
             background=background
@@ -415,7 +424,8 @@ class UploadMethods:
                           progress_callback=None, reply_to=None,
                           parse_mode=(), silent=None, schedule=None,
                           supports_streaming=None, clear_draft=None,
-                          force_document=False, background=None, ttl=None):
+                          force_document=False, background=None, ttl=None,
+                          top_msg_id=None):
         """Specialized version of .send_file for albums"""
         # We don't care if the user wants to avoid cache, we will use it
         # anyway. Why? The cached version will be exactly the same thing
@@ -475,7 +485,7 @@ class UploadMethods:
         request = functions.messages.SendMultiMediaRequest(
             entity, reply_to_msg_id=reply_to, multi_media=media,
             silent=silent, schedule_date=schedule, clear_draft=clear_draft,
-            background=background
+            background=background, top_msg_id=top_msg_id
         )
         result = await self(request)
 

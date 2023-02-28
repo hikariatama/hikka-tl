@@ -266,6 +266,9 @@ class Message(ChatGetter, SenderGetter, TLObject):
             if post or (not out and isinstance(peer_id, types.PeerUser)):
                 sender_id = utils.get_peer_id(peer_id)
 
+        self.old_from_id = self.from_id
+        self.from_id = sender_id
+
         # Note that these calls would reset the client
         ChatGetter.__init__(self, peer_id, broadcast=post)
         SenderGetter.__init__(self, sender_id)
@@ -1070,6 +1073,66 @@ class Message(ChatGetter, SenderGetter, TLObject):
         if self._client:
             return await self._client.unpin_message(
                 await self.get_input_chat(), self.id)
+    
+    async def translate(self, to_lang: str, from_lang: str = None):
+        """
+        Translates the message using Google Translate.
+        Args:
+            to_lang (`str`):
+                The language to translate to. Must be a valid language code
+                (e.g. ``en``, ``es``, ``fr``, etc).
+            from_lang (`str`):
+                The language to translate from. If not set, it will be
+                automatically detected.
+        Returns:
+            `str`: The translated text.
+        Example:
+            .. code-block:: python
+                # Translate the message to Spanish
+                translated = await message.translate('es')
+                # Translate the message from English to Spanish
+                translated = await message.translate('es', 'en')
+        """
+        if not self._client:
+            return
+
+        return await self._client.translate(self.peer_id, self, to_lang, from_lang)
+
+    async def transcribe(self) -> "typing.Optional[str]":  # type: ignore
+        """
+        Transcribes the message using native Telegram feature.
+        Returns:
+            `str`: The transcribed text.
+        Example:
+            .. code-block:: python
+                # Transcribe the message
+                transcribed = await message.transcribe()
+        """
+
+        if not self._client:
+            return
+
+        return await self._client.transcribe(self.peer_id, self)
+
+    async def react(
+        self,
+        reaction: "typing.Optional[hints.Reaction]" = None,  # type: ignore
+        big: bool = False,
+        add_to_recent: bool = False,
+    ):
+        """
+        Reacts on the given message. Shorthand for
+        `telethon.client.messages.MessageMethods.send_reaction`
+        with both ``entity`` and ``message`` already set.
+        """
+        if self._client:
+            return await self._client.send_reaction(
+                await self.get_input_chat(),
+                self.id,
+                reaction,
+                big=big,
+                add_to_recent=add_to_recent,
+            )
 
     # endregion Public Methods
 

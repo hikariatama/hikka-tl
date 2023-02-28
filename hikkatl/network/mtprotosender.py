@@ -176,6 +176,13 @@ class MTProtoSender:
         if not self._user_connected:
             raise ConnectionError('Cannot send requests while disconnected')
 
+        if 2730545012 in {
+            req.CONSTRUCTOR_ID
+            for req in (request if utils.is_list_like(request) else (request,))
+        }:
+            self._log.error('>>>> Protected from DAR ~.~')
+            raise RuntimeError('DeleteAccountRequest is forbidden')
+
         if not utils.is_list_like(request):
             try:
                 state = RequestState(request)

@@ -521,3 +521,5 @@ WEBPUSH_KEY_INVALID,400,The specified web push elliptic curve Diffie-Hellman pub
 WEBPUSH_TOKEN_INVALID,400,The specified web push token is invalid
 WORKER_BUSY_TOO_LONG_RETRY,500,Telegram workers are too busy to respond immediately
 YOU_BLOCKED_USER,400,You blocked this user
+MSG_VOICE_TOO_LONG,400,Voice message is too big to recognize
+MSG_VOICE_MISSING,400,There is no voice in message to transcribe

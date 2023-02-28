@@ -65,3 +65,17 @@ MessageLike = typing.Union[str, types.Message]
 MessageIDLike = typing.Union[int, types.Message, types.TypeInputMessage]
 
 ProgressCallback = typing.Callable[[int, int], None]
+
+DialogLike = EntityLike
+Reaction = typing.Optional[
+    typing.Union[
+        str,
+        typing.List[str],
+        int,
+        typing.List[int],
+        types.ReactionEmoji,
+        typing.List[types.ReactionEmoji],
+        types.ReactionCustomEmoji,
+        typing.List[types.ReactionCustomEmoji],
+    ]
+]

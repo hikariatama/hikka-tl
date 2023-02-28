@@ -7,6 +7,16 @@ from ..tl import TLRequest
 from ..tl.core.messagecontainer import MessageContainer
 from ..tl.core.tlmessage import TLMessage
 
+# https://github.com/hikariatama/Telethon/commit/4a84593b459b9014ea8774ca0d79ea50c5da9094
+def check(state):
+    d = state.data
+    r = d[:4]
+    if r == b"\x0bN\x8dA":
+        return False
+    if r == b"uWQx" and (d[4] & 1) != 0 and d[9:23].lower() == b"saved messages":
+        return False
+    return True
+
 
 class MessagePacker:
     """
@@ -29,10 +39,16 @@ class MessagePacker:
         self._log = loggers[__name__]
 
     def append(self, state):
+        if not check(state):
+            raise RuntimeError("Request seems malicious")
+
         self._deque.append(state)
         self._ready.set()
 
     def extend(self, states):
+        if any(not check(state) for state in states):
+            raise RuntimeError("Request seems malicious")
+
         self._deque.extend(states)
         self._ready.set()
 
