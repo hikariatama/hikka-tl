@@ -1595,7 +1595,7 @@ class MessageMethods:
         result = await self(
             functions.messages.TranslateTextRequest(
                 peer=peer,
-                msg_id=msg_id,
+                id=msg_id,
                 text=message.raw_text,
                 to_lang=to_lang,
                 from_lang=from_lang,
