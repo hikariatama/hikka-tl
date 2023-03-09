@@ -1583,7 +1583,6 @@ class MessageMethods:
         peer: "hints.EntityLike",
         message: "hints.MessageIDLike",
         to_lang: str,
-        from_lang: typing.Optional[str] = None,
     ) -> str:
         msg_id = utils.get_message_id(message) or 0
         if not msg_id:
@@ -1595,10 +1594,9 @@ class MessageMethods:
         result = await self(
             functions.messages.TranslateTextRequest(
                 peer=peer,
-                id=msg_id,
-                text=message.raw_text,
+                id=[msg_id],
+                text=[message.text],
                 to_lang=to_lang,
-                from_lang=from_lang,
             )
         )
         return getattr(result, "text", None) or ""
