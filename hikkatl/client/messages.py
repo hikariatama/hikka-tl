@@ -4,7 +4,7 @@ import itertools
 import typing
 import warnings
 
-from .. import helpers, utils, errors, hints, events
+from .. import helpers, utils, errors, hints, events, extensions
 from ..requestiter import RequestIter
 from ..tl import types, functions
 
@@ -1595,11 +1595,19 @@ class MessageMethods:
             functions.messages.TranslateTextRequest(
                 peer=peer,
                 id=[msg_id],
-                text=[message.text],
+                text=[types.TextWithEntities(message.raw_text, message.entities)],
                 to_lang=to_lang,
             )
         )
-        return getattr(result, "text", None) or ""
+
+        return (
+            extensions.html.unparse(
+                result.result[0].text,
+                result.result[0].entities,
+            )
+            if result and result.result
+            else ""
+        )
 
     # endregion
 
