@@ -1583,6 +1583,8 @@ class MessageMethods:
         peer: "hints.EntityLike",
         message: "hints.MessageIDLike",
         to_lang: str,
+        raw_text: "typing.Optional[str]" = None,
+        entities: "typing.Optional[typing.List[types.MessageEntity]]" = None,
     ) -> str:
         msg_id = utils.get_message_id(message) or 0
         if not msg_id:
@@ -1595,7 +1597,12 @@ class MessageMethods:
             functions.messages.TranslateTextRequest(
                 peer=peer,
                 id=[msg_id],
-                text=[types.TextWithEntities(message.raw_text, message.entities)],
+                text=[
+                    types.TextWithEntities(
+                        raw_text or message.raw_text,
+                        entities or message.entities or [],
+                    )
+                ],
                 to_lang=to_lang,
             )
         )
