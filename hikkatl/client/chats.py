@@ -927,9 +927,9 @@ class ChatMethods:
         entity = await self.get_input_entity(entity)
         user = await self.get_input_entity(user)
         # We CAN ban a channel
-        # ty = helpers._entity_type(user)
-        # if ty != helpers._EntityType.USER:
-        #     raise ValueError('You must pass a user entity')
+        ty = helpers._entity_type(user)
+        if ty not in (helpers._EntityType.USER, helpers._EntityType.CHANNEL):
+            raise ValueError('You must pass a user or channel entity')
 
         perm_names = (
             'change_info', 'post_messages', 'edit_messages', 'delete_messages',

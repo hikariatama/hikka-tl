@@ -79,3 +79,10 @@ Reaction = typing.Optional[
         typing.List[types.ReactionCustomEmoji],
     ]
 ]
+
+StoryItemLike = typing.Union[
+    int,
+    types.StoryItem,
+    types.StoryItemDeleted,
+    types.StoryItemSkipped,
+]

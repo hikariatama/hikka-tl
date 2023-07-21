@@ -386,6 +386,7 @@ class TelegramBaseClient(abc.ABC):
         self._borrowed_senders = {}
         self._borrow_sender_lock = asyncio.Lock()
 
+        self._loop = None  # only used as a sanity check
         self._updates_error = None
         self._updates_handle = None
         self._keepalive_handle = None
@@ -525,6 +526,11 @@ class TelegramBaseClient(abc.ABC):
         """
         if self.session is None:
             raise ValueError('TelegramClient instance cannot be reused after logging out')
+        
+        if self._loop is None:
+            self._loop = helpers.get_running_loop()
+        elif self._loop != helpers.get_running_loop():
+            raise RuntimeError('The asyncio event loop must not change after connection (see the FAQ for details)')
 
         if not await self._sender.connect(self._connection(
             self.session.server_address,
@@ -553,8 +559,12 @@ class TelegramBaseClient(abc.ABC):
 
             self._message_box.load(ss, cs)
             for state in cs:
-                entity = self.session.get_input_entity(state.channel_id)
-                if entity:
+                try:
+                    entity = self.session.get_input_entity(state.channel_id)
+                except ValueError:
+                    self._log[__name__].warning(
+                        'No access_hash in cache for channel %s, will not catch up', state.channel_id)
+                else:
                     self._mb_entity_cache.put(Entity(EntityType.CHANNEL, entity.channel_id, entity.access_hash))
 
         self._init_request.query = functions.help.GetConfigRequest()

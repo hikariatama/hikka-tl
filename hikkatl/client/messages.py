@@ -618,7 +618,7 @@ class MessageMethods:
             peer=entity,
             msg_id=utils.get_message_id(message)
         ))
-        m = r.messages[0]
+        m = min(r.messages, key=lambda msg: msg.id)
         chat = next(c for c in r.chats if c.id == m.peer_id.channel_id)
         return utils.get_input_peer(chat), m.id
 
@@ -628,7 +628,7 @@ class MessageMethods:
             message: 'hints.MessageLike' = '',
             *,
             top_msg_id: int = None,
-            reply_to: 'typing.Union[int, types.Message]' = None,
+            reply_to: 'typing.Union[int, types.Message, types.StoryItem, types.TypeInputReplyTo]' = None,
             attributes: 'typing.Sequence[types.TypeDocumentAttribute]' = None,
             parse_mode: typing.Optional[str] = (),
             formatting_entities: typing.Optional[typing.List[types.TypeMessageEntity]] = None,
@@ -642,7 +642,8 @@ class MessageMethods:
             background: bool = None,
             supports_streaming: bool = False,
             schedule: 'hints.DateLike' = None,
-            comment_to: 'typing.Union[int, types.Message]' = None
+            comment_to: 'typing.Union[int, types.Message]' = None,
+            nosound_video: bool = None
     ) -> 'types.Message':
         """
         Sends a message to the specified user, chat or channel.
@@ -761,6 +762,15 @@ class MessageMethods:
                 This parameter takes precedence over ``reply_to``. If there is
                 no linked chat, `telethon.errors.sgIdInvalidError` is raised.
 
+            nosound_video (`bool`, optional):
+                Only applicable when sending a video file without an audio
+                track. If set to ``True``, the video will be displayed in
+                Telegram as a video. If set to ``False``, Telegram will attempt
+                to display the video as an animated gif. (It may still display
+                as a video due to other factors.) The value is ignored if set
+                on non-video files. This is set to ``True`` for albums, as gifs
+                cannot be sent in albums.
+
         Returns
             The sent `custom.Message <telethon.tl.custom.message.Message>`.
 
@@ -829,12 +839,15 @@ class MessageMethods:
                 buttons=buttons, clear_draft=clear_draft, silent=silent,
                 schedule=schedule, supports_streaming=supports_streaming,
                 formatting_entities=formatting_entities,
-                comment_to=comment_to, background=background
+                comment_to=comment_to, background=background,
+                nosound_video=nosound_video
             )
 
         entity = await self.get_input_entity(entity)
         if comment_to is not None:
             entity, reply_to = await self._get_comment_data(entity, comment_to)
+
+        reply_to = utils.get_input_reply_to(entity, reply_to, top_msg_id)
 
         if isinstance(message, types.Message):
             if buttons is None:
@@ -864,10 +877,9 @@ class MessageMethods:
             request = functions.messages.SendMessageRequest(
                 peer=entity,
                 message=message.message or '',
-                top_msg_id=top_msg_id,
                 silent=silent,
                 background=background,
-                reply_to_msg_id=utils.get_message_id(reply_to),
+                reply_to=reply_to,
                 reply_markup=markup,
                 entities=message.entities,
                 clear_draft=clear_draft,
@@ -889,7 +901,7 @@ class MessageMethods:
                 message=message,
                 entities=formatting_entities,
                 no_webpage=not link_preview,
-                reply_to_msg_id=utils.get_message_id(reply_to),
+                reply_to=reply_to,
                 clear_draft=clear_draft,
                 silent=silent,
                 background=background,
@@ -909,7 +921,7 @@ class MessageMethods:
                 entities=result.entities,
                 reply_markup=request.reply_markup,
                 ttl_period=result.ttl_period,
-                reply_to=types.MessageReplyHeader(request.reply_to_msg_id)
+                reply_to=types.MessageReplyHeader(request.reply_to)
             )
             message._finish_init(self, {}, entity)
             return message

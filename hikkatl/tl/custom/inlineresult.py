@@ -112,7 +112,7 @@ class InlineResult:
             entity (`entity`):
                 The entity to which the message of this result should be sent.
 
-            reply_to (`int` | `Message <telethon.tl.custom.message.Message>`, optional):
+            reply_to (`int` | `Message <telethon.tl.custom.message.Message>` | `StoryItem <telethon.tl.types.StoryItem>`, optional):
                 If present, the sent message will reply to this ID or message.
 
             comment_to (`int` | `Message <telethon.tl.custom.message.Message>`, optional):
@@ -146,9 +146,23 @@ class InlineResult:
             raise ValueError('You must provide the entity where the result should be sent to')
 
         if comment_to:
-            entity, reply_id = await self._client._get_comment_data(entity, comment_to)
+            entity, reply_to = await self._client._get_comment_data(entity, comment_to)
         else:
-            reply_id = None if reply_to is None else utils.get_message_id(reply_to)
+            reply_to = (
+                None
+                if reply_to is None
+                else utils.get_input_reply_to(
+                    entity,
+                    reply_to,
+                    (
+                        reply_to.id
+                        if isinstance(reply_to, types.Message)
+                        else reply_to
+                        if isinstance(reply_to, int)
+                        else None
+                    ),
+                )
+            )
 
         req = functions.messages.SendInlineBotResultRequest(
             peer=entity,
@@ -158,7 +172,7 @@ class InlineResult:
             background=background,
             clear_draft=clear_draft,
             hide_via=hide_via,
-            reply_to_msg_id=reply_id
+            reply_to=reply_to
         )
         return self._client._get_response_message(
             req, await self._client(req), entity)

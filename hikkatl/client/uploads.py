@@ -1,3 +1,5 @@
+import copy
+import functools
 import hashlib
 import io
 import itertools
@@ -6,6 +8,7 @@ import pathlib
 import re
 import typing
 from io import BytesIO
+import asyncio
 
 from ..crypto import AES
 
@@ -77,7 +80,7 @@ def _resize_photo_if_needed(
             result.paste(image, mask=image.split()[alpha_index])
 
         buffer = io.BytesIO()
-        result.save(buffer, 'JPEG', **kwargs)
+        result.save(buffer, 'JPEG', progressive=True, **kwargs)
         buffer.seek(0)
         return buffer
 
@@ -102,7 +105,7 @@ class UploadMethods:
             file_size: int = None,
             clear_draft: bool = False,
             progress_callback: 'hints.ProgressCallback' = None,
-            reply_to: 'hints.MessageIDLike' = None,
+            reply_to: 'typing.Union[hints.MessageIDLike, types.TypeInputReplyTo]' = None,
             attributes: 'typing.Sequence[types.TypeDocumentAttribute]' = None,
             thumb: 'hints.FileLike' = None,
             allow_cache: bool = True,
@@ -118,6 +121,7 @@ class UploadMethods:
             comment_to: 'typing.Union[int, types.Message]' = None,
             top_msg_id: int = None,
             ttl: int = None,
+            nosound_video: bool = None,
             **kwargs) -> 'types.Message':
         """
         Sends message with the given file to the specified entity.
@@ -199,7 +203,7 @@ class UploadMethods:
                 A callback function accepting two parameters:
                 ``(sent bytes, total)``.
 
-            reply_to (`int` | `Message <telethon.tl.custom.message.Message>`):
+            reply_to (`int` | `Message <telethon.tl.custom.message.Message>` | `types.TypeInputReplyTo` | `StoryItem <telethon.tl.types.StoryItem>`):
                 Same as `reply_to` from `send_message`.
 
             attributes (`list`, optional):
@@ -292,6 +296,15 @@ class UploadMethods:
                 Not all types of media can be used with this parameter, such
                 as text documents, which will fail with ``TtlMediaInvalidError``.
 
+            nosound_video (`bool`, optional):
+                Only applicable when sending a video file without an audio
+                track. If set to ``True``, the video will be displayed in
+                Telegram as a video. If set to ``False``, Telegram will attempt
+                to display the video as an animated gif. (It may still display
+                as a video due to other factors.) The value is ignored if set
+                on non-video files. This is set to ``True`` for albums, as gifs
+                cannot be sent in albums.
+
         Returns
             The `Message <telethon.tl.custom.message.Message>` (or messages)
             containing the sent file, or messages if a list of them was passed.
@@ -352,8 +365,8 @@ class UploadMethods:
         entity = await self.get_input_entity(entity)
         if comment_to is not None:
             entity, reply_to = await self._get_comment_data(entity, comment_to)
-        else:
-            reply_to = utils.get_message_id(reply_to)
+
+        reply_to = utils.get_input_reply_to(entity, reply_to, top_msg_id)
 
         # First check if the user passed an iterable, in which case
         # we may want to send grouped.
@@ -368,7 +381,6 @@ class UploadMethods:
                 result += await self._send_album(
                     entity, file[:10], caption=captions[:10],
                     progress_callback=progress_callback, reply_to=reply_to,
-                    top_msg_id=top_msg_id,
                     parse_mode=parse_mode, silent=silent, schedule=schedule,
                     supports_streaming=supports_streaming, clear_draft=clear_draft,
                     force_document=force_document, background=background,
@@ -403,7 +415,8 @@ class UploadMethods:
             progress_callback=progress_callback,
             attributes=attributes,  allow_cache=allow_cache, thumb=thumb,
             voice_note=voice_note, video_note=video_note,
-            supports_streaming=supports_streaming, ttl=ttl
+            supports_streaming=supports_streaming, ttl=ttl,
+            nosound_video=nosound_video
         )
 
         # e.g. invalid cast from :tl:`MessageMediaWebPage`
@@ -412,8 +425,7 @@ class UploadMethods:
 
         markup = self.build_reply_markup(buttons)
         request = functions.messages.SendMediaRequest(
-            entity, media, reply_to_msg_id=reply_to, message=caption,
-            top_msg_id=top_msg_id,
+            entity, media, reply_to=reply_to, message=caption,
             entities=msg_entities, reply_markup=markup, silent=silent,
             schedule_date=schedule, clear_draft=clear_draft,
             background=background
@@ -446,16 +458,22 @@ class UploadMethods:
 
         reply_to = utils.get_message_id(reply_to)
 
+        used_callback = None if not progress_callback else (
+            # use an integer when sent matches total, to easily determine a file has been fully sent
+            lambda s, t: progress_callback(sent_count + 1 if s == t else sent_count + s / t, len(files))
+        )
+
         # Need to upload the media first, but only if they're not cached yet
         media = []
-        for file in files:
+        for sent_count, file in enumerate(files):
             # Albums want :tl:`InputMedia` which, in theory, includes
             # :tl:`InputMediaUploadedPhoto`. However using that will
             # make it `raise MediaInvalidError`, so we need to upload
             # it as media and then convert that to :tl:`InputMediaPhoto`.
             fh, fm, _ = await self._file_to_media(
                 file, supports_streaming=supports_streaming,
-                force_document=force_document, ttl=ttl)
+                force_document=force_document, ttl=ttl,
+                progress_callback=used_callback, nosound_video=True)
             if isinstance(fm, (types.InputMediaUploadedPhoto, types.InputMediaPhotoExternal)):
                 r = await self(functions.messages.UploadMediaRequest(
                     entity, media=fm
@@ -485,8 +503,7 @@ class UploadMethods:
         request = functions.messages.SendMultiMediaRequest(
             entity, reply_to_msg_id=reply_to, multi_media=media,
             silent=silent, schedule_date=schedule, clear_draft=clear_draft,
-            background=background, top_msg_id=top_msg_id
-        )
+            background=background)
         result = await self(request)
 
         random_ids = [m.random_id for m in media]
@@ -678,7 +695,7 @@ class UploadMethods:
             progress_callback=None, attributes=None, thumb=None,
             allow_cache=True, voice_note=False, video_note=False,
             supports_streaming=False, mime_type=None, as_image=None,
-            ttl=None):
+            ttl=None, nosound_video=None):
         if not file:
             return None, None, None
 
@@ -765,7 +782,7 @@ class UploadMethods:
 
             # setting `nosound_video` to `True` doesn't affect videos with sound
             # instead it prevents sending silent videos as GIFs
-            nosound_video = True if mime_type.split("/")[0] == 'video' else None
+            nosound_video = nosound_video if mime_type.split("/")[0] == 'video' else None
 
             media = types.InputMediaUploadedDocument(
                 file=file_handle,
