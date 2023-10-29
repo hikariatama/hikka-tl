@@ -160,6 +160,9 @@ class Message(ChatGetter, SenderGetter, TLObject):
         action (:tl:`MessageAction`):
             The message action object of the message for :tl:`MessageService`
             instances, which will be `None` for other types of messages.
+        
+        invert_media (:tl:`bool`):
+            Unknown yet
     """
 
     # region Initialization
@@ -204,12 +207,14 @@ class Message(ChatGetter, SenderGetter, TLObject):
             restriction_reason: Optional[types.TypeRestrictionReason] = None,
             forwards: Optional[int] = None,
             replies: Optional[types.TypeMessageReplies] = None,
+            invert_media: Optional[bool] = None,
 
             # For MessageAction (mandatory)
             action: Optional[types.TypeMessageAction] = None
     ):
         # Common properties to messages, then to service (in the order they're defined in the `.tl`)
         self.out = bool(out)
+        self.invert_media = bool(invert_media)
         self.mentioned = mentioned
         self.media_unread = media_unread
         self.silent = silent

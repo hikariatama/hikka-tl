@@ -27,6 +27,7 @@ class StoriesMethods:
         privacy_rules: typing.Optional[typing.List[types.TypeInputPrivacyRule]] = None,
         period: int = 86400,
         parse_mode: str = (),
+        media_areas: typing.Optional[typing.List[types.TypeMediaArea]] = None,
         **kwargs,
     ) -> "types.StoryItem":
         """
@@ -82,6 +83,9 @@ class StoriesMethods:
             period (`int`, optional):
                 The period in seconds for which the story should be visible.
                 Default is 24 hours.
+            
+            media_areas (`list`, optional):
+                Optional list of media areas for the story.
 
         Returns
             The `<telethon.tl.StoryItem>`
@@ -267,6 +271,7 @@ class StoriesMethods:
             noforwards=noforwards,
             privacy_rules=privacy_rules or [types.InputPrivacyValueAllowAll()],
             period=period,
+            media_areas=media_areas or [],
         )
 
         return self._get_response_message(request, await self(request), input_chat=None)
@@ -298,7 +303,7 @@ class StoriesMethods:
     async def get_user_stories(
         self: "TelegramClient",
         user: "hints.EntityLike",
-    ) -> types.stories.UserStories:
+    ) -> types.stories.Stories:
         return await self(
             functions.stories.GetUserStoriesRequest(
                 user_id=await self.get_input_entity(user),
