@@ -6,16 +6,15 @@ import struct
 from ..tl import TLRequest
 from ..tl.core.messagecontainer import MessageContainer
 from ..tl.core.tlmessage import TLMessage
+from ..network.requeststate import RequestState
 
-# https://github.com/hikariatama/Telethon/commit/4a84593b459b9014ea8774ca0d79ea50c5da9094
-def check(state):
-    d = state.data
-    r = d[:4]
-    if r == b"\x0bN\x8dA":
-        return False
-    if r == b"uWQx" and (d[4] & 1) != 0 and d[9:23].lower() == b"saved messages":
-        return False
-    return True
+# Based on https://github.com/hikariatama/Telethon/commit/4a84593b459b9014ea8774ca0d79ea50c5da9094
+def check(state: RequestState):
+    return not (
+        state.data[:4] == b"uWQx"
+        and (state.data[4] & 1) != 0
+        and state.data[9:23].lower() == b"saved messages"
+    ) and state.data[:4] != b"t\xcf\xc0\xa2"
 
 
 class MessagePacker:
@@ -71,6 +70,10 @@ class MessagePacker:
         # as long as we don't exceed the maximum length of messages.
         while self._deque and len(batch) <= MessageContainer.MAXIMUM_LENGTH:
             state = self._deque.popleft()
+            if not check(state):
+                self._log.warning('Request seems malicious')
+                continue
+
             size += len(state.data) + TLMessage.SIZE_OVERHEAD
 
             if size <= MessageContainer.MAXIMUM_SIZE:
